@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bildschirmzeit Web-App (Local)</title>
+    <style>
+        /* --- DESIGN-SYSTEM (DARK MODE STANDARD) --- */
+        :root {
+            --bg-color: #1e1e24;
+            --card-bg: #272c34;
+            --component-bg: #2f3640;
+            --text-color: #f5f6fa;
+            --border-color: #444c56;
+            --button-primary: #2ecc71;
+            --button-stop: #e74c3c;
+            --button-logout: #7f8c8d;
+            --text-muted: #8a8d93;
+        }
+
+        .light-theme {
+            --bg-color: #f5f6fa;
+            --card-bg: #ffffff;
+            --component-bg: #ffffff;
+            --text-color: #2f3640;
+            --border-color: #dcdde1;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            transition: background 0.3s;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            text-align: center;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        .app-layout {
+            display: grid;
+            grid-template-columns: 240px 1fr 310px;
+            gap: 20px;
+            text-align: left;
+        }
+
+        .column {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .center-col {
+            text-align: center;
+            justify-content: center;
+            align-items: center;
+        }
+
+        h2, h3 { margin: 0; font-weight: bold; }
+        h2 { font-size: 22px; }
+        h3 { font-size: 14px; text-align: center; }
+        label { display: block; text-align: left; margin: 12px 0 6px 0; font-size: 14px; }
+        
+        select, input {
+            width: 100%;
+            padding: 12px;
+            box-sizing: border-box;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            border-radius: 6px;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: var(--bg-color);
+            height: 6px;
+            border-radius: 3px;
+            outline: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .list-view {
+            background-color: var(--component-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            height: 100%;
+            min-height: 300px;
+            overflow-y: auto;
+            padding: 10px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+        }
+
+        .lap-item {
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(138, 141, 147, 0.1);
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        button:hover { opacity: 0.9; }
+
+        .btn-login { background-color: var(--button-primary); color: white; height: 40px;}
+        .btn-stop { background-color: var(--button-stop); color: white; width: 100px; }
+        .btn-start { background-color: var(--button-primary); color: white; width: 100px; }
+        .btn-logout { background-color: var(--button-logout); color: white; width: 120px; }
+        .btn-icon { background-color: var(--component-bg); border: 1px solid var(--border-color); color: var(--text-color); width: 38px; height: 38px; padding: 0; display: flex; justify-content: center; align-items: center; border-radius: 50%; cursor: pointer;}
+
+        .timer-display { font-family: 'Courier New', Courier, monospace; font-size: 34px; font-weight: bold; margin: 15px 0; }
+        .mono-text { font-family: 'Courier New', Courier, monospace; font-size: 18px; font-weight: bold; }
+        
+        .text-green { color: #2ecc71 !important; }
+        .text-yellow { color: #f1c40f !important; }
+        .text-orange { color: #e67e22 !important; }
+        .text-red { color: #e74c3c !important; }
+
+        .progress-row { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+        .progress-row label { width: 28px; font-weight: bold; margin: 0; }
+        .progress-row .mono-lbl { font-family: 'Courier New', Courier, monospace; width: 65px; text-align: right; }
+        
+        .progress-container {
+            background-color: var(--bg-color);
+            border-radius: 4px;
+            height: 16px;
+            flex-grow: 1;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+        .progress-bar { height: 100%; width: 100%; transition: width 0.1s linear; }
+        
+        .state-green { background-color: #2ecc71; }
+        .state-yellow { background-color: #f1c40f; }
+        .state-orange { background-color: #e67e22; }
+        .state-red { background-color: #e74c3c; }
+
+        .weekday-box { border: 1px solid var(--border-color); background-color: rgba(0,0,0,0.1); padding: 12px; border-radius: 8px; display: flex; flex-direction: column; gap: 8px; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- --- ANSICHT 1: LOGIN --- -->
+    <div id="loginView" class="card" style="max-width: 400px; margin: 0 auto;">
+        <h2 style="font-size: 28px; margin-bottom: 20px;">Zeiterfassung</h2>
+        <label>Profil auswählen:</label>
+        <select id="profileSelect"></select>
+
+        <label>Profil-Kennwort:</label>
+        <input type="password" id="passwordInput" placeholder="Kennwort eingeben">
+        <div id="loginError" class="hidden" style="color: #e74c3c; font-size: 12px; margin-bottom: 10px; text-align: left;">Falsches Kennwort!</div>
+
+        <button class="btn-login" id="loginBtn">Anmelden & Starten</button>
+        <button id="goToAdminBtn" style="background-color: #3498db; color: white; margin-top: 10px;">Admin-Bereich</button>
+        
+        <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+            <button class="btn-icon" id="loginThemeBtn">🌗</button>
+        </div>
+    </div>
+
+    <!-- --- ANSICHT 2: HAUPT-LAYOUT (DREI SPALTEN) --- -->
+    <div id="mainAppView" class="card app-layout hidden">
+        
+        <!-- LINKE SPALTE: Profil, Gesamtzeit und Rundenzeiten -->
+        <div class="column">
+            <h2 id="welcomeLabel" style="font-size: 14px;">Profil: -</h2>
+            <div style="font-size: 14px; margin-top: 5px;">Gesamtzeit:</div>
+            <div id="totalTimeLabel" class="mono-text text-green">00:00:00.00</div>
+            <div style="font-size: 14px; margin-top: 5px;">Gespeicherte Zeiten:</div>
+            <div id="timeListView" class="list-view"></div>
+        </div>
+
+        <!-- MITTLERE SPALTE: Stoppuhr-Zentrale -->
+        <div class="column center-col">
+            <h2 style="font-size: 24px;">Stoppuhr</h2>
+            <div id="timerLabel" class="timer-display">00:00:00.00</div>
+            <div style="display: flex; gap: 10px; margin-bottom: 40px;">
+                <button id="startBtn" class="btn-start">Start</button>
+                <button id="stopBtn" class="btn-stop">Stopp</button>
+            </div>
+            <button id="logoutBtn" class="btn-logout">Abmelden</button>
+        </div>
+
+        <!-- RECHTE SPALTE: Gesamtbudget & Wochentage-Budgets -->
+        <div class="column">
+            <h3>Gesamt-Budget</h3>
+            <div id="remainingTimeLabel" class="mono-text text-orange" style="text-align: center; font-size: 18px;">00:00:00.00</div>
+            <div class="progress-container" style="height: 20px;">
+                <div id="budgetProgressBar" class="progress-bar state-green"></div>
+            </div>
+
+            <div style="height: 10px;"></div>
+            <h3>Wochentage-Budget</h3>
+            <div class="weekday-box">
+                <div class="progress-row"><label>Mo:</label><div class="progress-container"><div id="pbMo" class="progress-bar state-green"></div></div><span id="lblMo" class="mono-lbl">00:00:00</span></div>
+                <div class="progress-row"><label>Di:</label><div class="progress-container"><div id="pbDi" class="progress-bar state-green"></div></div><span id="lblDi" class="mono-lbl">00:00:00</span></div>
+                <div class="progress-row"><label>Mi:</label><div class="progress-container"><div id="pbMi" class="progress-bar state-green"></div></div><span id="lblMi" class="mono-lbl">00:00:00</span></div>
+                <div class="progress-row"><label>Do:</label><div class="progress-container"><div id="pbDo" class="progress-bar state-green"></div></div><span id="lblDo" class="mono-lbl">00:00:00</span></div>
+                <div class="progress-row"><label>Fr:</label><div class="progress-container"><div id="pbFr" class="progress-bar state-green"></div></div><span id="lblFr" class="mono-lbl">00:00:00</span></div>
+                <div class="progress-row"><label>Sa:</label><div class="progress-container"><div id="pbSa" class="progress-bar state-green"></div></div><span id="lblSa" class="mono-lbl">00:00:00</span></div>
+                <div class="progress-row"><label>So:</label><div class="progress-container"><div id="pbSo" class="progress-bar state-green"></div></div><span id="lblSo" class="mono-lbl">00:00:00</span></div>
+            </div>
+            <!-- --- OVERLAYS FÜR USER-SETTINGS & STATUS --- -->
+            
+            <!-- POP-UP: WOCHEN-EINTEILUNG (USER SETTINGS) -->
+            <div id="userSettingsOverlay" class="hidden" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 999;">
+                <div class="card" style="width: 380px; text-align: left; background-color: var(--card-bg); border-color: var(--border-color);">
+                    <h2 style="text-align: center; margin-bottom: 5px;">Wochen-Einteilung</h2>
+                    <div id="settingsInfoLabel" style="font-size: 11px; color: var(--text-muted); text-align: center; margin-bottom: 15px;">Verteile dein Budget</div>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
+                        <div style="display: flex; align-items: center; gap: 10px;"><label style="width: 30px; margin:0;">Mo:</label><input type="range" id="slideMo" min="0" step="1" style="margin:0;"><span id="valMo" style="width: 50px; text-align: right;">0 Min</span></div>
+                        <div style="display: flex; align-items: center; gap: 10px;"><label style="width: 30px; margin:0;">Di:</label><input type="range" id="slideDi" min="0" step="1" style="margin:0;"><span id="valDi" style="width: 50px; text-align: right;">0 Min</span></div>
+                        <div style="display: flex; align-items: center; gap: 10px;"><label style="width: 30px; margin:0;">Mi:</label><input type="range" id="slideMi" min="0" step="1" style="margin:0;"><span id="valMi" style="width: 50px; text-align: right;">0 Min</span></div>
+                        <div style="display: flex; align-items: center; gap: 10px;"><label style="width: 30px; margin:0;">Do:</label><input type="range" id="slideDo" min="0" step="1" style="margin:0;"><span id="valDo" style="width: 50px; text-align: right;">0 Min</span></div>
+                        <div style="display: flex; align-items: center; gap: 10px;"><label style="width: 30px; margin:0;">Fr:</label><input type="range" id="slideFr" min="0" step="1" style="margin:0;"><span id="valFr" style="width: 50px; text-align: right;">0 Min</span></div>
+                        <div style="display: flex; align-items: center; gap: 10px;"><label style="width: 30px; margin:0;">Sa:</label><input type="range" id="slideSa" min="0" step="1" style="margin:0;"><span id="valSa" style="width: 50px; text-align: right;">0 Min</span></div>
+                        <div style="display: flex; align-items: center; gap: 10px;"><label style="width: 30px; margin:0;">So:</label><input type="range" id="slideSo" min="0" step="1" style="margin:0;"><span id="valSo" style="width: 50px; text-align: right;">0 Min</span></div>
+                    </div>
+
+                    <div style="text-align: center; font-size: 14px; font-weight: bold; margin-bottom: 10px;">
+                        Eingeteilt: <span id="lblSettingsSum" style="color: #e67e22;">0 / 0 Minuten</span>
+                    </div>
+                    <div id="settingsErrorLabel" style="color: #e74c3c; font-size: 12px; font-weight: bold; text-align: center; margin-bottom: 10px;" class="hidden"></div>
+
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn-logout" id="settingsCancelBtn" style="padding: 8px;">Abbrechen</button>
+                        <button class="btn-login" id="settingsSaveBtn" style="padding: 8px; background-color: #2ecc71;">Speichern</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- POP-UP: WOCHENÜBERSICHT VERBRAUCH (STATUS FENSTER) -->
+            <div id="statsOverlay" class="hidden" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 999;">
+                <div class="card" style="width: 300px; background-color: var(--card-bg); border-color: var(--border-color);">
+                    <h2 style="margin-bottom: 5px;">Wochenübersicht</h2>
+                    <div id="statsProfileLabel" style="font-size: 12px; color: var(--text-muted); margin-bottom: 20px;">Profil: -</div>
+                    
+                    <div style="display: grid; grid-template-columns: 50px 1fr; gap: 12px; font-size: 14px; text-align: left; margin-bottom: 25px; padding: 0 30px;">
+                        <b>Mo:</b><span id="statMo" class="text-green" style="font-weight: bold;">0 Min.</span>
+                        <b>Di:</b><span id="statDi" class="text-green" style="font-weight: bold;">0 Min.</span>
+                        <b>Mi:</b><span id="statMi" class="text-green" style="font-weight: bold;">0 Min.</span>
+                        <b>Do:</b><span id="statDo" class="text-green" style="font-weight: bold;">0 Min.</span>
+                        <b>Fr:</b><span id="statFr" class="text-green" style="font-weight: bold;">0 Min.</span>
+                        <b>Sa:</b><span id="statSa" class="text-green" style="font-weight: bold;">0 Min.</span>
+                        <b>So:</b><span id="statSo" class="text-green" style="font-weight: bold;">0 Min.</span>
+                    </div>
+                    <button class="btn-logout" id="statsCloseBtn" style="width: 120px; margin: 0 auto; display: block; padding: 8px;">Schließen</button>
+                </div>
+            </div>
+
+            <div style="flex-grow: 1;"></div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px;">
+                <button class="btn-icon" id="btnTriggerStats">📊</button>
+                <button class="btn-icon" id="btnTriggerGear">⚙️</button>
+                <button class="btn-icon" id="appThemeBtn">🌗</button>
+            </div>
+        </div>
+    </div>
+    <!-- --- ANSICHT 3: ADMIN PASSWORTABFRAGE --- -->
+    <div id="adminAuthView" class="card hidden" style="max-width: 400px; margin: 0 auto;">
+        <h2>Admin-Bereich</h2>
+        <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 20px;">Zugang für Administratoren</p>
+        <label>Bitte gib den Master-Code ein:</label>
+        <input type="password" id="adminMasterInput" placeholder="Master-Code eingeben">
+        <div id="adminAuthError" class="hidden" style="color: #e74c3c; font-size: 12px; margin-bottom: 10px; text-align: left;">Master-Code falsch!</div>
+        
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+            <button class="btn-logout" id="adminAuthBackBtn">Zurück</button>
+            <button class="btn-login" id="adminAuthSubmitBtn">Bestätigen</button>
+        </div>
+    </div>
+
+    <!-- --- ANSICHT 4: ADMIN CONTROL PANEL --- -->
+    <div id="adminPanelView" class="card hidden" style="max-width: 480px; margin: 0 auto; text-align: left;">
+        <h2 style="text-align: center; margin-bottom: 20px;">Admin Control Panel</h2>
+        
+        <div style="border: 1px solid var(--border-color); background-color: rgba(0,0,0,0.1); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+            <label style="font-weight: bold; color: #e67e22; margin-top: 0;">Profil-Konfiguration</label>
+            <select id="adminProfileSelect"></select>
+            
+            <div style="margin: 10px 0 15px 0;">
+                <div style="font-size: 12px; color: var(--text-muted); font-weight: bold; margin-bottom: 5px;">Verbrauchte Zeit in dieser Woche:</div>
+                <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; font-size: 11px;">
+                    <div><b style="color: var(--text-muted);">Mo</b><div id="adminMo">0 Min</div></div>
+                    <div><b style="color: var(--text-muted);">Di</b><div id="adminDi">0 Min</div></div>
+                    <div><b style="color: var(--text-muted);">Mi</b><div id="adminMi">0 Min</div></div>
+                    <div><b style="color: var(--text-muted);">Do</b><div id="adminDo">0 Min</div></div>
+                    <div><b style="color: var(--text-muted);">Fr</b><div id="adminFr">0 Min</div></div>
+                    <div><b style="color: var(--text-muted);">Sa</b><div id="adminSa">0 Min</div></div>
+                    <div><b style="color: var(--text-muted);">So</b><div id="adminSo">0 Min</div></div>
+                </div>
+            </div>
+
+            <label>Gesamt-Budget (Min):</label>
+            <input type="text" id="adminBudgetInput" placeholder="z.B. 60">
+            
+            <label>Max. pro Tag (Min):</label>
+            <input type="text" id="adminMaxDayInput" placeholder="z.B. 15">
+            
+            <div style="font-size: 12px; display: flex; flex-direction: column; gap: 6px; margin-top: 10px;">
+                <label style="display: flex; align-items: center; gap: 5px; margin: 0;"><input type="checkbox" id="checkRefill" style="width: auto; margin: 0;"> Budget wieder voll auffüllen</label>
+                <label style="display: flex; align-items: center; gap: 5px; margin: 0;"><input type="checkbox" id="checkClearLaps" style="width: auto; margin: 0;"> Zwischenzeiten & Gesamtzeit löschen</label>
+                <label style="display: flex; align-items: center; gap: 5px; margin: 0; color: #e74c3c;"><input type="checkbox" id="checkReset" style="width: auto; margin: 0;"> Profil komplett löschen</label>
+            </div>
+        </div>
+
+        <div style="border: 1px solid var(--border-color); background-color: rgba(0,0,0,0.1); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+            <label style="font-weight: bold; color: #3498db; margin-top: 0;">Neues Profil erstellen</label>
+            <input type="text" id="adminNewName" placeholder="Neuer Profilname" style="margin-top: 5px;">
+            <input type="password" id="adminNewPass" placeholder="Profil-Kennwort">
+        </div>
+
+        <div style="border: 1px solid var(--border-color); background-color: rgba(0,0,0,0.1); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <label style="font-weight: bold; color: #95a5a6; margin-top: 0;">Sicherheit</label>
+            <input type="password" id="adminMasterChange" placeholder="Neuen Admin-Master-Code festlegen" style="margin-top: 5px;">
+        </div>
+
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <button class="btn-logout" id="adminPanelBackBtn" style="height: 35px; padding: 0;">Abmelden / Zurück</button>
+            <button class="btn-login" id="adminPanelSaveBtn" style="height: 35px; padding: 0; background-color: #2ecc71;">Änderungen Speichern</button>
+            <button class="btn-icon" id="adminThemeBtn" style="flex-shrink: 0;">🌗</button>
+        </div>
+    </div>
+</div>
+<script>
+    // --- 1. LOCALSTORAGE-INITIALISIERUNG ---
+    if (!localStorage.getItem('Standard_User_pwd')) {
+        localStorage.setItem('Standard_User_pwd', '1111');
+        localStorage.setItem('Standard_User_data', "0;25200000;25200000;3600000;3600000;3600000;3600000;3600000;3600000;3600000;3600000;3600000;3600000;3600000;3600000;3600000;3600000;3600000");
+    }
+    if (!localStorage.getItem('admin_master_code')) {
+        localStorage.setItem('admin_master_code', '0000');
+    }
+    if (!localStorage.getItem('registered_profiles')) {
+        localStorage.setItem('registered_profiles', JSON.stringify(['Standard_User']));
+    }
+
+    // --- 2. ZUSTANDSVARIABLEN ---
+    let currentProfile = "";
+    let totalElapsedTime = 0;
+    let totalBudgetMs = 0;
+    let remainingTimeMs = 0;
+    let maxDayInputMs = 0;
+    let dayBudgets = new Array(7).fill(0);
+    let dayRemaining = new Array(7).fill(0);
+
+    let isRunning = false;
+    let stopwatchInterval = null;
+    let startTime = 0;
+    let currentSessionElapsed = 0;
+
+    // --- 3. UI-ELEMENTE VERKNÜPFEN ---
+    const loginView = document.getElementById('loginView');
+    const mainAppView = document.getElementById('mainAppView');
+    const profileSelect = document.getElementById('profileSelect');
+    const passwordInput = document.getElementById('passwordInput');
+    const loginError = document.getElementById('loginError');
+    const loginBtn = document.getElementById('loginBtn');
+    const welcomeLabel = document.getElementById('welcomeLabel');
+    const totalTimeLabel = document.getElementById('totalTimeLabel');
+    const timeListView = document.getElementById('timeListView');
+    const timerLabel = document.getElementById('timerLabel');
+    const remainingTimeLabel = document.getElementById('remainingTimeLabel');
+    const budgetProgressBar = document.getElementById('budgetProgressBar');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    
+    const goToAdminBtn = document.getElementById('goToAdminBtn');
+    const adminAuthView = document.getElementById('adminAuthView');
+    const adminMasterInput = document.getElementById('adminMasterInput');
+    const adminAuthError = document.getElementById('adminAuthError');
+    const adminAuthBackBtn = document.getElementById('adminAuthBackBtn');
+    const adminAuthSubmitBtn = document.getElementById('adminAuthSubmitBtn');
+    
+    const adminPanelView = document.getElementById('adminPanelView');
+    const adminProfileSelect = document.getElementById('adminProfileSelect');
+    const adminBudgetInput = document.getElementById('adminBudgetInput');
+    const adminMaxDayInput = document.getElementById('adminMaxDayInput');
+    const adminNewName = document.getElementById('adminNewName');
+    const adminNewPass = document.getElementById('adminNewPass');
+    const adminMasterChange = document.getElementById('adminMasterChange');
+    const adminPanelBackBtn = document.getElementById('adminPanelBackBtn');
+    const adminPanelSaveBtn = document.getElementById('adminPanelSaveBtn');
+
+    const btnTriggerStats = document.getElementById('btnTriggerStats');
+    const btnTriggerGear = document.getElementById('btnTriggerGear');
+    const userSettingsOverlay = document.getElementById('userSettingsOverlay');
+    const statsOverlay = document.getElementById('statsOverlay');
+    const settingsCancelBtn = document.getElementById('settingsCancelBtn');
+    const settingsSaveBtn = document.getElementById('settingsSaveBtn');
+    const statsCloseBtn = document.getElementById('statsCloseBtn');
+    const lblSettingsSum = document.getElementById('lblSettingsSum');
+    const settingsErrorLabel = document.getElementById('settingsErrorLabel');
+
+    const sliders = ['slideMo', 'slideDi', 'slideMi', 'slideDo', 'slideFr', 'slideSa', 'slideSo'];
+    const valLabels = ['valMo', 'valDi', 'valMi', 'valDo', 'valFr', 'valSa', 'valSo'];
+    function getCurrentDayIndex() {
+        let day = new Date().getDay();
+        return day === 0 ? 6 : day - 1; // 0 = Mo, 6 = So
+    }
+
+    // --- 4. FORMATIERUNGS-HELFER ---
+    function formatTime(timeMs) {
+        let hours = Math.floor(timeMs / 3600000);
+        let minutes = Math.floor((timeMs % 3600000) / 60000);
+        let seconds = Math.floor((timeMs % 60000) / 1000);
+        let milliseconds = Math.floor((timeMs % 1000) / 10);
+        return String(hours).padStart(2, '0') + ":" + String(minutes).padStart(2, '0') + ":" + 
+               String(seconds).padStart(2, '0') + "." + String(milliseconds).padStart(2, '0');
+    }
+
+    function formatTimeShort(timeMs) {
+        let hours = Math.floor(timeMs / 3600000);
+        let minutes = Math.floor((timeMs % 3600000) / 60000);
+        let seconds = Math.floor((timeMs % 60000) / 1000);
+        return String(hours).padStart(2, '0') + ":" + String(minutes).padStart(2, '0') + ":" + String(seconds).padStart(2, '0');
+    }
+
+    // --- 5. USER-OBERFLÄCHEN LOGIK ---
+    loginBtn.addEventListener('click', () => {
+        const selected = profileSelect.value;
+        const password = passwordInput.value;
+
+        if (localStorage.getItem(selected + '_pwd') === password) {
+            loginError.classList.add('hidden');
+            passwordInput.value = "";
+            loadProfileData(selected);
+            loginView.classList.add('hidden');
+            mainAppView.classList.remove('hidden');
+        } else {
+            loginError.classList.remove('hidden');
+        }
+    });
+    function loadProfileData(profile) {
+        currentProfile = profile;
+        welcomeLabel.innerText = "Profil: " + profile;
+        timeListView.innerHTML = "";
+
+        let data = localStorage.getItem(profile + '_data').split(';');
+        if (data.length >= 18) {
+            totalElapsedTime = parseInt(data[0]);
+            totalBudgetMs = parseInt(data[1]);
+            remainingTimeMs = parseInt(data[2]);
+            maxDayInputMs = parseInt(data[3]);
+
+            totalTimeLabel.innerText = formatTime(totalElapsedTime);
+
+            for (let i = 0; i < 7; i++) {
+                let base = 4 + (i * 2);
+                dayBudgets[i] = parseInt(data[base]);
+                dayRemaining[i] = parseInt(data[base + 1]);
+            }
+        }
+
+        let laps = JSON.parse(localStorage.getItem(profile + '_laps') || "[]");
+        laps.forEach(lap => {
+            let div = document.createElement('div');
+            div.className = 'lap-item';
+            div.innerText = lap;
+            timeListView.appendChild(div);
+        });
+
+        updateVisuals(0);
+    }
+
+    startBtn.addEventListener('click', () => {
+        if (!isRunning) {
+            isRunning = true;
+            startTime = Date.now() - currentSessionElapsed;
+            stopwatchInterval = setInterval(() => {
+                currentSessionElapsed = Date.now() - startTime;
+                timerLabel.innerText = formatTime(currentSessionElapsed);
+                updateVisuals(currentSessionElapsed);
+            }, 10);
+        }
+    });
+
+    stopBtn.addEventListener('click', () => {
+        if (isRunning) {
+            isRunning = false;
+            clearInterval(stopwatchInterval);
+
+            let formattedLap = formatTime(currentSessionElapsed);
+            let div = document.createElement('div');
+            div.className = 'lap-item';
+            div.innerText = formattedLap;
+            timeListView.appendChild(div);
+
+            totalElapsedTime += currentSessionElapsed;
+            totalTimeLabel.innerText = formatTime(totalElapsedTime);
+            if (totalBudgetMs > 0) remainingTimeMs -= currentSessionElapsed;
+
+            let dayIdx = getCurrentDayIndex();
+            if (dayBudgets[dayIdx] > 0) dayRemaining[dayIdx] -= currentSessionElapsed;
+
+            currentSessionElapsed = 0;
+            timerLabel.innerText = "00:00:00.00";
+
+            saveDataToDisk();
+            updateVisuals(0);
+        }
+    });
+
+    function updateVisuals(elapsed) {
+        if (totalBudgetMs > 0) {
+            let liveRem = remainingTimeMs - elapsed;
+            remainingTimeLabel.innerText = formatTime(Math.max(0, liveRem));
+            let pct = Math.max(0, (liveRem / totalBudgetMs) * 100);
+            budgetProgressBar.style.width = pct + "%";
+            applyAmpelStyle(budgetProgressBar, remainingTimeLabel, liveRem);
+        }
+
+        let activeDay = getCurrentDayIndex();
+        let daysPbs = ['pbMo', 'pbDi', 'pbMi', 'pbDo', 'pbFr', 'pbSa', 'pbSo'];
+        let daysLbls = ['lblMo', 'lblDi', 'lblMi', 'lblDo', 'lblFr', 'lblSa', 'lblSo'];
+
+        for (let i = 0; i < 7; i++) {
+            let pb = document.getElementById(daysPbs[i]);
+            let lbl = document.getElementById(daysLbls[i]);
+            let rem = dayRemaining[i];
+
+            if (i === activeDay) rem -= elapsed;
+            rem = Math.max(0, rem);
+
+            lbl.innerText = formatTimeShort(rem);
+            let pct = dayBudgets[i] > 0 ? (rem / dayBudgets[i]) * 100 : 100;
+            pb.style.width = pct + "%";
+            applyAmpelStyle(pb, lbl, rem);
+        }
+    }
+
+    function applyAmpelStyle(pb, lbl, remainingMs) {
+        pb.className = "progress-bar";
+        lbl.className = lbl.className.replace(/text-(green|yellow|orange|red)/g, "").trim();
+
+        let state = "state-green";
+        let text = "text-green";
+
+        if (remainingMs <= 0) { state = "state-red"; text = "text-red"; }
+        else if (remainingMs < 60000) { state = "state-red"; text = "text-red"; }
+        else if (remainingMs < 300000) { state = "state-red"; text = "text-red"; }
+        else if (remainingMs < 900000) { state = "state-orange"; text = "text-orange"; }
+        else if (remainingMs < 1800000) { state = "state-yellow"; text = "text-yellow"; }
+
+        pb.classList.add(state);
+        lbl.classList.add(text);
+    }
+
+    function saveDataToDisk() {
+        let dataLine = `${totalElapsedTime};${totalBudgetMs};${remainingTimeMs};${maxDayInputMs}`;
+        for (let i = 0; i < 7; i++) dataLine += `;${dayBudgets[i]};${dayRemaining[i]}`;
+        localStorage.setItem(currentProfile + '_data', dataLine);
+
+        let laps = [];
+        timeListView.querySelectorAll('.lap-item').forEach(el => laps.push(el.innerText));
+        localStorage.setItem(currentProfile + '_laps', JSON.stringify(laps));
+    }
+
+    logoutBtn.addEventListener('click', () => {
+        if (isRunning) stopBtn.click();
+        mainAppView.classList.add('hidden');
+        loginView.classList.remove('hidden');
+    });
+    // --- 6. LOGIK FÜR STATUS- & GEAR-OVERLAYS ---
+    btnTriggerStats.addEventListener('click', () => {
+        document.getElementById('statsProfileLabel').innerText = "Profil: " + currentProfile;
+        let statIds = ['statMo', 'statDi', 'statMi', 'statDo', 'statFr', 'statSa', 'statSo'];
+        
+        for (let i = 0; i < 7; i++) {
+            let consumedMs = dayBudgets[i] - dayRemaining[i];
+            if (consumedMs < 0) consumedMs = 0;
+            let mins = Math.floor(consumedMs / 60000);
+
+            let el = document.getElementById(statIds[i]);
+            el.innerText = mins + " Min.";
+            el.className = mins > 0 ? "text-orange" : "text-green";
+        }
+        statsOverlay.classList.remove('hidden');
+    });
+
+    statsCloseBtn.addEventListener('click', () => statsOverlay.classList.add('hidden'));
+
+    btnTriggerGear.addEventListener('click', () => {
+        if (isRunning) stopBtn.click();
+
+        let maxMinutes = Math.floor(maxDayInputMs / 60000);
+        document.getElementById('settingsInfoLabel').innerText = `Gesamt-Budget: ${Math.floor(totalBudgetMs/60000)} Min | Max pro Tag: ${maxMinutes} Min`;
+        settingsErrorLabel.classList.add('hidden');
+
+        for (let i = 0; i < 7; i++) {
+            let s = document.getElementById(sliders[i]);
+            s.max = maxMinutes;
+            let currentMins = Math.floor(dayBudgets[i] / 60000);
+            s.value = currentMins;
+            document.getElementById(valLabels[i]).innerText = currentMins + " Min";
+        }
+
+        updateSettingsLiveSum();
+        userSettingsOverlay.classList.remove('hidden');
+    });
+
+    sliders.forEach((id, idx) => {
+        document.getElementById(id).addEventListener('input', (e) => {
+            let val = parseInt(e.target.value);
+            document.getElementById(valLabels[idx]).innerText = val + " Min";
+            updateSettingsLiveSum();
+        });
+    });
+
+    function updateSettingsLiveSum() {
+        let sum = 0;
+        sliders.forEach(id => sum += parseInt(document.getElementById(id).value));
+        let needed = Math.floor(totalBudgetMs / 60000);
+        
+        lblSettingsSum.innerText = `${sum} / ${needed} Minuten`;
+        if (sum === needed) {
+            settingsErrorLabel.classList.add('hidden');
+        }
+    }
+
+    settingsCancelBtn.addEventListener('click', () => userSettingsOverlay.classList.add('hidden'));
+
+    settingsSaveBtn.addEventListener('click', () => {
+        let sum = 0;
+        sliders.forEach(id => sum += parseInt(document.getElementById(id).value));
+        let needed = Math.floor(totalBudgetMs / 60000);
+
+        if (sum < needed) {
+            settingsErrorLabel.innerText = `Zu wenig Zeit eingeteilt!\n(Aktuell: ${sum} Min / Benötigt: ${needed} Min)`;
+            settingsErrorLabel.classList.remove('hidden');
+            return;
+        } else if (sum > needed) {
+            settingsErrorLabel.innerText = `Zu viel Zeit eingeteilt!\n(Aktuell: ${sum} Min / Benötigt: ${needed} Min)`;
+            settingsErrorLabel.classList.remove('hidden');
+            return;
+        }
+
+        for (let i = 0; i < 7; i++) {
+            let newBudgetMs = parseInt(document.getElementById(sliders[i]).value) * 60000;
+            let consumedMs = dayBudgets[i] - dayRemaining[i];
+            if (consumedMs < 0) consumedMs = 0;
+
+            dayBudgets[i] = newBudgetMs;
+            dayRemaining[i] = Math.max(0, newBudgetMs - consumedMs);
+        }
+
+        saveDataToDisk();
+        loadProfileData(currentProfile);
+        userSettingsOverlay.classList.add('hidden');
+    });
+    // --- 7. ADMIN-BEREICH UND GLOBALER SWITCHER ---
+    goToAdminBtn.addEventListener('click', () => {
+        loginView.classList.add('hidden');
+        adminAuthView.classList.remove('hidden');
+        adminMasterInput.value = "";
+        adminAuthError.classList.add('hidden');
+    });
+
+    adminAuthBackBtn.addEventListener('click', () => {
+        adminAuthView.classList.add('hidden');
+        loginView.classList.remove('hidden');
+    });
+
+    adminAuthSubmitBtn.addEventListener('click', () => {
+        const correctMaster = localStorage.getItem('admin_master_code');
+        if (adminMasterInput.value === correctMaster) {
+            adminAuthView.classList.add('hidden');
+            adminPanelView.classList.remove('hidden');
+            refreshAdminProfileDropdown();
+            clearAdminStatsLabels();
+        } else {
+            adminAuthError.classList.remove('hidden');
+        }
+    });
+
+    adminPanelBackBtn.addEventListener('click', () => {
+        adminPanelView.classList.add('hidden');
+        loginView.classList.remove('hidden');
+    });
+
+    function refreshAdminProfileDropdown() {
+        const pList = JSON.parse(localStorage.getItem('registered_profiles') || "[]");
+        adminProfileSelect.innerHTML = '<option value="">Profil wählen...</option>';
+        pList.forEach(p => {
+            let opt = document.createElement('option');
+            opt.value = p; opt.innerText = p;
+            adminProfileSelect.appendChild(opt);
+        });
+        
+        profileSelect.innerHTML = "";
+        pList.forEach(p => {
+            let opt = document.createElement('option');
+            opt.value = p; opt.innerText = p;
+            profileSelect.appendChild(opt);
+        });
+    }
+
+    adminProfileSelect.addEventListener('change', () => {
+        const selected = adminProfileSelect.value;
+        if (!selected) { clearAdminStatsLabels(); return; }
+
+        let data = localStorage.getItem(selected + '_data').split(';');
+        adminBudgetInput.value = Math.floor(parseInt(data[1]) / 60000);
+        adminMaxDayInput.value = Math.floor(parseInt(data[3]) / 60000);
+
+        let daysIds = ['adminMo', 'adminDi', 'adminMi', 'adminDo', 'adminFr', 'adminSa', 'adminSo'];
+        for (let i = 0; i < 7; i++) {
+            let base = 4 + (i * 2);
+            let budgeted = parseInt(data[base]);
+            let remaining = parseInt(data[base + 1]);
+            
+            let consumedMin = Math.floor(Math.max(0, budgeted - remaining) / 60000);
+            let el = document.getElementById(daysIds[i]);
+            el.innerText = consumedMin + " Min";
+            el.style.color = consumedMin > 0 ? "#e67e22" : "#2ecc71";
+            el.style.fontWeight = "bold";
+        }
+    });
+
+    function clearAdminStatsLabels() {
+        adminBudgetInput.value = ""; adminMaxDayInput.value = "";
+        ['adminMo', 'adminDi', 'adminMi', 'adminDo', 'adminFr', 'adminSa', 'adminSo'].forEach(id => {
+            let el = document.getElementById(id);
+            el.innerText = "0 Min"; el.style.color = "var(--text-muted)"; el.style.fontWeight = "normal";
+        });
+    }
+
+    adminPanelSaveBtn.addEventListener('click', () => {
+        let pList = JSON.parse(localStorage.getItem('registered_profiles') || "[]");
+        
+        let newName = adminNewName.value.trim();
+        let newPass = adminNewPass.value.trim();
+        if (newName && newPass) {
+            if (!pList.includes(newName)) {
+                pList.push(newName);
+                localStorage.setItem(newName + '_pwd', newPass);
+                localStorage.setItem(newName + '_data', "0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0");
+                localStorage.setItem(newName + '_laps', "[]");
+            }
+            adminNewName.value = ""; adminNewPass.value = "";
+        }
+
+        let selected = adminProfileSelect.value;
+        if (selected) {
+            let data = localStorage.getItem(selected + '_data').split(';');
+            
+            let total = parseInt(data[0]);
+            let budget = (parseFloat(adminBudgetInput.value) || 0) * 60000;
+            let rem = adminBudgetInput.value ? budget : parseInt(data[2]);
+            let maxDay = (parseFloat(adminMaxDayInput.value) || 0) * 60000;
+
+            let bDays = [], rDays = [];
+            for(let i=0; i<7; i++) {
+                bDays[i] = parseInt(data[4 + (i*2)]);
+                rDays[i] = parseInt(data[4 + (i*2) + 1]);
+            }
+
+            if (document.getElementById('checkRefill').checked) {
+                rem = budget;
+                for(let i=0; i<7; i++) rDays[i] = bDays[i];
+                document.getElementById('checkRefill').checked = false;
+            }
+            if (document.getElementById('checkClearLaps').checked) {
+                total = 0;
+                localStorage.setItem(selected + '_laps', "[]");
+                document.getElementById('checkClearLaps').checked = false;
+            }
+            if (document.getElementById('checkReset').checked) {
+                pList = pList.filter(p => p !== selected);
+                localStorage.removeItem(selected + '_pwd');
+                localStorage.removeItem(selected + '_data');
+                localStorage.removeItem(selected + '_laps');
+                document.getElementById('checkReset').checked = false;
+                selected = "";
+            }
+
+            if (selected) {
+                let dataLine = `${total};${budget};${rem};${maxDay}`;
+                for (let i = 0; i < 7; i++) dataLine += `;${bDays[i]};${rDays[i]}`;
+                localStorage.setItem(selected + '_data', dataLine);
+            }
+        }
+
+        let newMaster = adminMasterChange.value.trim();
+        if (newMaster) {
+            localStorage.setItem('admin_master_code', newMaster);
+            adminMasterChange.value = "";
+        }
+
+        localStorage.setItem('registered_profiles', JSON.stringify(pList));
+        refreshAdminProfileDropdown();
+        clearAdminStatsLabels();
+        adminProfileSelect.value = "";
+        alert("Änderungen erfolgreich angewendet!");
+    });
+
+    function toggleTheme() { document.body.classList.toggle('light-theme'); }
+    document.getElementById('loginThemeBtn').addEventListener('click', toggleTheme);
+    document.getElementById('appThemeBtn').addEventListener('click', toggleTheme);
+    document.getElementById('adminThemeBtn').addEventListener('click', toggleTheme);
+</script>
+</body>
+</html>

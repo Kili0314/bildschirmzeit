@@ -709,8 +709,14 @@
         loginView.classList.remove('hidden');
     });
 
+    window.onload = function() {
+        refreshAdminProfileDropdown();
+    };
+
     function refreshAdminProfileDropdown() {
         const pList = JSON.parse(localStorage.getItem('registered_profiles') || "[]");
+        
+        // Admin-Dropdown befüllen
         adminProfileSelect.innerHTML = '<option value="">Profil wählen...</option>';
         pList.forEach(p => {
             let opt = document.createElement('option');
@@ -718,13 +724,20 @@
             adminProfileSelect.appendChild(opt);
         });
         
+        // Login-Dropdown befüllen
         profileSelect.innerHTML = "";
         pList.forEach(p => {
             let opt = document.createElement('option');
             opt.value = p; opt.innerText = p;
             profileSelect.appendChild(opt);
         });
+
+        // NEU: Erzwingt, dass das erste Profil standardmäßig vorausgewählt ist
+        if (pList.length > 0) {
+            profileSelect.value = pList[0];
+        }
     }
+
 
     adminProfileSelect.addEventListener('change', () => {
         const selected = adminProfileSelect.value;
